@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earn to Die - Web Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Roboto+Condensed:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Roboto Condensed', sans-serif;
+            overflow: hidden;
+            color: #fff;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #gameCanvas {
+            flex: 1;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #8B4513 50%, #654321 100%);
+            cursor: crosshair;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .hud {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #ff6b35;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Russo One', sans-serif;
+        }
+        
+        #stats {
+            top: 20px;
+            left: 20px;
+            min-width: 200px;
+        }
+        
+        #stats div {
+            margin: 5px 0;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .stat-label {
+            color: #ff6b35;
+        }
+        
+        #fuelBar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        #fuelFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s;
+            width: 100%;
+        }
+        
+        #controls {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #ff6b35, #d84315);
+            border: 3px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-family: 'Russo One', sans-serif;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #bf360c, 0 10px 20px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+            user-select: none;
+        }
+        
+        .control-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #bf360c, 0 4px 10px rgba(0,0,0,0.5);
+        }
+        
+        .control-btn:disabled {
+            background: #666;
+            box-shadow: 0 6px 0 #444;
+            cursor: not-allowed;
+        }
+        
+        #menu, #shop, #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        h1 {
+            font-family: 'Russo One', sans-serif;
+            font-size: 72px;
+            color: #ff6b35;
+            text-shadow: 4px 4px 0 #8b0000, 8px 8px 0 #000;
+            margin-bottom: 30px;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .btn {
+            padding: 20px 60px;
+            font-size: 28px;
+            font-family: 'Russo One', sans-serif;
+            background: linear-gradient(145deg, #ff6b35, #d84315);
+            border: 4px solid #fff;
+            color: white;
+            cursor: pointer;
+            margin: 10px;
+            text-transform: uppercase;
+            box-shadow: 0 8px 0 #bf360c, 0 15px 30px rgba(0,0,0,0.5);
+            transition: all 0.1s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 0 #bf360c, 0 20px 40px rgba(0,0,0,0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 #bf360c, 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        #shop h2 {
+            font-family: 'Russo One', sans-serif;
+            font-size: 48px;
+            color: #ff6b35;
+            margin-bottom: 20px;
+        }
+        
+        #money {
+            font-size: 36px;
+            color: #ffd700;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 800px;
+            margin-bottom: 30px;
+        }
+        
+        .upgrade-item {
+            background: rgba(255,255,255,0.1);
+            border: 3px solid #ff6b35;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upgrade-item:hover {
+            background: rgba(255,107,53,0.2);
+            transform: scale(1.05);
+        }
+        
+        .upgrade-item.maxed {
+            border-color: #ffd700;
+            background: rgba(255,215,0,0.2);
+        }
+        
+        .upgrade-name {
+            font-family: 'Russo One', sans-serif;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .upgrade-level {
+            font-size: 18px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        
+        .upgrade-cost {
+            font-size: 24px;
+            color: #ffd700;
+        }
+        
+        .upgrade-btn {
+            margin-top: 10px;
+            padding: 10px 30px;
+            font-size: 20px;
+        }
+        
+        #distanceMarker {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ff6b35;
+        }
+        
+        .marker {
+            margin: 10px 0;
+            font-size: 16px;
+            opacity: 0.5;
+        }
+        
+        .marker.reached {
+            color: #00ff00;
+            opacity: 1;
+            font-weight: bold;
+        }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 48px; }
+            .upgrade-grid { grid-template-columns: 1fr; }
+            .control-btn { width: 70px; height: 70px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div id="stats" class="hud">
+                <div><span class="stat-label">Дистанция:</span> <span id="distance">0</span> м</div>
+                <div><span class="stat-label">Скорость:</span> <span id="speed">0</span> км/ч</div>
+                <div><span class="stat-label">Деньги:</span> $<span id="cash">0</span></div>
+                <div>Топливо:</div>
+                <div id="fuelBar">
+                    <div id="fuelFill"></div>
+                </div>
+            </div>
+            
+            <div id="distanceMarker" class="hud">
+                <div class="marker" data-dist="500">🏁 500м</div>
+                <div class="marker" data-dist="1000">🏁 1000м</div>
+                <div class="marker" data-dist="2000">🏁 2000м</div>
+                <div class="marker" data-dist="4000">🏁 4000м</div>
+                <div class="marker" data-dist="8000">🏁 8000м</div>
+            </div>
+            
+            <div id="controls" class="hud">
+                <button class="control-btn" id="gasBtn" onmousedown="game.gas=true" onmouseup="game.gas=false" 
+                        ontouchstart="game.gas=true" ontouchend="game.gas=false">⛽</button>
+                <button class="control-btn" id="brakeBtn" onmousedown="game.brake=true" onmouseup="game.brake=false"
+                        ontouchstart="game.brake=true" ontouchend="game.brake=false">🛑</button>
+                <button class="control-btn" id="boostBtn" onmousedown="game.boost=true" onmouseup="game.boost=false"
+                        ontouchstart="game.boost=true" ontouchend="game.boost=false">🚀</button>
+            </div>
+        </div>
+        
+        <div id="menu">
+            <h1>🏎️ EARN TO DIE 💀</h1>
+            <p style="font-size: 24px; margin-bottom: 30px; text-align: center; max-width: 600px;">
+                Проеди как можно дальше через орды зомби!<br>
+                Зарабатывай деньги и прокачивай тачку!
+            </p>
+            <button class="btn" onclick="game.start()">ИГРАТЬ</button>
+        </div>
+        
+        <div id="shop" class="hidden">
+            <h2>🔧 ГАРАЖ 🔧</h2>
+            <div id="money">$<span id="shopMoney">0</span></div>
+            <div class="upgrade-grid">
+                <div class="upgrade-item" onclick="game.buyUpgrade('engine')">
+                    <div class="upgrade-name">🔥 Двигатель</div>
+                    <div class="upgrade-level">Уровень <span id="engineLevel">1</span>/5</div>
+                    <div class="upgrade-cost" id="engineCost">$100</div>
+                    <div style="font-size: 14px; color: #aaa;">Увеличивает скорость</div>
+                </div>
+                <div class="upgrade-item" onclick="game.buyUpgrade('transmission')">
+                    <div class="upgrade-name">⚙️ Трансмиссия</div>
+                    <div class="upgrade-level">Уровень <span id="transLevel">1</span>/5</div>
+                    <div class="upgrade-cost" id="transCost">$150</div>
+                    <div style="font-size: 14px; color: #aaa;">Улучшает разгон</div>
+                </div>
+                <div class="upgrade-item" onclick="game.buyUpgrade('wheels')">
+                    <div class="upgrade-name">🛞 Колёса</div>
+                    <div class="upgrade-level">Уровень <span id="wheelLevel">1</span>/5</div>
+                    <div class="upgrade-cost" id="wheelCost">$80</div>
+                    <div style="font-size: 14px; color: #aaa;">Лучшее сцепление</div>
+                </div>
+                <div class="upgrade-item" onclick="game.buyUpgrade('fuel')">
+                    <div class="upgrade-name">⛽ Бак</div>
+                    <div class="upgrade-level">Уровень <span id="fuelLevel">1</span>/5</div>
+                    <div class="upgrade-cost" id="fuelCost">$120</div>
+                    <div style="font-size: 14px; color: #aaa;">Больше топлива</div>
+                </div>
+                <div class="upgrade-item" onclick="game.buyUpgrade('armor')">
+                    <div class="upgrade-name">🛡️ Броня</div>
+                    <div class="upgrade-level">Уровень <span id="armorLevel">1</span>/5</div>
+                    <div class="upgrade-cost" id="armorCost">$200</div>
+                    <div style="font-size: 14px; color: #aaa;">Защита от зомби</div>
+                </div>
+                <div class="upgrade-item" onclick="game.buyUpgrade('weapon')">
+                    <div class="upgrade-name">🔫 Пушка</div>
+                    <div class="upgrade-level">Уровень <span id="weaponLevel">0</span>/3</div>
+                    <div class="upgrade-cost" id="weaponCost">$500</div>
+                    <div style="font-size: 14px; color: #aaa;">Авто-атака зомби</div>
+                </div>
+            </div>
+            <button class="btn" onclick="game.nextLevel()">ПРОДОЛЖИТЬ ➔</button>
+        </div>
+        
+        <div id="gameOver" class="hidden">
+            <h1 style="font-size: 56px;">� ТОПЛИВО ЗАКОНЧИЛОСЬ! ⛽</h1>
+            <p style="font-size: 28px; margin: 20px;">Пройдено: <span id="finalDistance">0</span> м</p>
+            <p style="font-size: 28px; margin: 20px; color: #ffd700;">Заработано: $<span id="finalCash">0</span></p>
+            <button class="btn" onclick="game.openShop()">В ГАРАЖ 🔧</button>
+        </div>
+    </div>
+
+    <script>
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.keys = {};
+                this.gas = false;
+                this.brake = false;
+                this.boost = false;
+                
+                this.setupInputs();
+                this.reset();
+                this.loop();
+            }
+            
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            setupInputs() {
+                window.addEventListener('keydown', (e) => {
+                    if(e.code === 'ArrowRight' || e.code === 'KeyD') this.gas = true;
+                    if(e.code === 'ArrowLeft' || e.code === 'KeyA') this.brake = true;
+                    if(e.code === 'Space') this.boost = true;
+                });
+                window.addEventListener('keyup', (e) => {
+                    if(e.code === 'ArrowRight' || e.code === 'KeyD') this.gas = false;
+                    if(e.code === 'ArrowLeft' || e.code === 'KeyA') this.brake = false;
+                    if(e.code === 'Space') this.boost = false;
+                });
+            }
+            
+            reset() {
+                this.car = {
+                    x: 100,
+                    y: 0,
+                    vx: 0,
+                    vy: 0,
+                    angle: 0,
+                    angularVel: 0,
+                    fuel: 100,
+                    maxFuel: 100,
+                    onGround: false,
+                    health: 100
+                };
+                
+                this.camera = { x: 0, y: 0 };
+                this.distance = 0;
+                this.maxDistance = 0;
+                this.cash = 0;
+                this.totalCash = 0;
+                this.zombies = [];
+                this.obstacles = [];
+                this.particles = [];
+                this.ground = [];
+                this.level = 1;
+                
+                this.upgrades = {
+                    engine: 1,
+                    transmission: 1,
+                    wheels: 1,
+                    fuel: 1,
+                    armor: 1,
+                    weapon: 0
+                };
+                
+                this.costs = {
+                    engine: 100,
+                    transmission: 150,
+                    wheels: 80,
+                    fuel: 120,
+                    armor: 200,
+                    weapon: 500
+                };
+                
+                this.generateGround();
+            }
+            
+            generateGround() {
+                this.ground = [];
+                let y = this.canvas.height * 0.7;
+                for(let x = 0; x < 20000; x += 20) {
+                    y += (Math.random() - 0.5) * 10;
+                    if(x > 500) y += Math.sin(x * 0.01) * 5;
+                    this.ground.push({x, y});
+                }
+            }
+            
+            start() {
+                document.getElementById('menu').classList.add('hidden');
+                document.getElementById('shop').classList.add('hidden');
+                document.getElementById('gameOver').classList.add('hidden');
+                this.resetLevel();
+            }
+            
+            resetLevel() {
+                this.car.x = 100;
+                this.car.y = this.getGroundY(100) - 50;
+                this.car.vx = 0;
+                this.car.vy = 0;
+                this.car.angle = 0;
+                this.car.angularVel = 0;
+                this.car.fuel = this.car.maxFuel;
+                this.car.health = 100;
+                this.distance = 0;
+                this.zombies = [];
+                this.obstacles = [];
+                this.particles = [];
+                this.generateLevel();
+            }
+            
+            generateLevel() {
+                // Generate zombies
+                for(let i = 500; i < 10000; i += 200 + Math.random() * 300) {
+                    this.zombies.push({
+                        x: i,
+                        y: this.getGroundY(i) - 30,
+                        vx: -0.5 - Math.random(),
+                        health: 1,
+                        dead: false
+                    });
+                }
+                
+                // Generate obstacles
+                for(let i = 800; i < 10000; i += 400 + Math.random() * 600) {
+                    const type = Math.random();
+                    if(type < 0.3) {
+                        // Box
+                        this.obstacles.push({
+                            x: i,
+                            y: this.getGroundY(i) - 40,
+                            w: 40,
+                            h: 40,
+                            type: 'box'
+                        });
+                    } else if(type < 0.6) {
+                        // Ramp
+                        this.obstacles.push({
+                            x: i,
+                            y: this.getGroundY(i),
+                            w: 100,
+                            h: 60,
+                            type: 'ramp',
+                            angle: -0.3
+                        });
+                    } else {
+                        // Mine
+                        this.obstacles.push({
+                            x: i,
+                            y: this.getGroundY(i) - 20,
+                            w: 30,
+                            h: 20,
+                            type: 'mine'
+                        });
+                    }
+                }
+            }
+            
+            getGroundY(x) {
+                const idx = Math.floor(x / 20);
+                if(idx < 0) return this.ground[0]?.y || this.canvas.height * 0.7;
+                if(idx >= this.ground.length) return this.ground[this.ground.length - 1]?.y || this.canvas.height * 0.7;
+                return this.ground[idx].y;
+            }
+            
+            update() {
+                if(document.getElementById('menu').classList.contains('hidden') === false ||
+                   document.getElementById('shop').classList.contains('hidden') === false ||
+                   document.getElementById('gameOver').classList.contains('hidden') === false) {
+                    return;
+                }
+                
+                // Car physics
+                const enginePower = 0.3 + (this.upgrades.engine - 1) * 0.15;
+                const maxSpeed = 15 + (this.upgrades.engine - 1) * 5;
+                const grip = 0.8 + (this.upgrades.wheels - 1) * 0.1;
+                const fuelConsumption = 0.05 - (this.upgrades.fuel - 1) * 0.005;
+                
+                // Gas
+                if(this.gas && this.car.fuel > 0) {
+                    const boost = this.boost ? 1.5 : 1;
+                    this.car.vx += enginePower * boost * Math.cos(this.car.angle);
+                    this.car.vy += enginePower * boost * Math.sin(this.car.angle);
+                    this.car.fuel -= fuelConsumption * (this.boost ? 2 : 1);
+                    
+                    // Exhaust particles
+                    if(Math.random() < 0.3) {
+                        this.addParticle(
+                            this.car.x - 30 * Math.cos(this.car.angle),
+                            this.car.y - 30 * Math.sin(this.car.angle),
+                            'smoke'
+                        );
+                    }
+                }
+                
+                // Brake
+                if(this.brake) {
+                    this.car.vx *= 0.95;
+                    this.car.vy *= 0.95;
+                }
+                
+                // Gravity and ground collision
+                this.car.vy += 0.5;
+                
+                const groundY = this.getGroundY(this.car.x);
+                const groundAngle = Math.atan2(
+                    this.getGroundY(this.car.x + 10) - this.getGroundY(this.car.x - 10),
+                    20
+                );
+                
+                // Simple ground collision
+                if(this.car.y > groundY - 25) {
+                    this.car.y = groundY - 25;
+                    this.car.vy = 0;
+                    this.car.onGround = true;
+                    
+                    // Friction
+                    this.car.vx *= grip;
+                    
+                    // Align to ground
+                    const targetAngle = groundAngle * 0.1;
+                    this.car.angle += (targetAngle - this.car.angle) * 0.1;
+                } else {
+                    this.car.onGround = false;
+                    this.car.angle += this.car.vy * 0.001;
+                }
+                
+                // Update position
+                this.car.x += this.car.vx;
+                this.car.y += this.car.vy;
+                
+                // Speed limit
+                const speed = Math.sqrt(this.car.vx**2 + this.car.vy**2);
+                if(speed > maxSpeed) {
+                    this.car.vx = (this.car.vx / speed) * maxSpeed;
+                    this.car.vy = (this.car.vy / speed) * maxSpeed;
+                }
+                
+                // Update distance
+                this.distance = Math.max(this.distance, Math.floor(this.car.x - 100));
+                if(this.distance > this.maxDistance) {
+                    this.maxDistance = this.distance;
+                }
+                
+                // Camera follow
+                this.camera.x = this.car.x - this.canvas.width * 0.3;
+                this.camera.y = this.car.y - this.canvas.height * 0.5;
+                
+                // Update zombies
+                this.zombies.forEach(zombie => {
+                    if(zombie.dead) return;
+                    
+                    zombie.x += zombie.vx;
+                    
+                    // Collision with car
+                    const dx = this.car.x - zombie.x;
+                    const dy = this.car.y - zombie.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if(dist < 50 && speed > 2) {
+                        zombie.dead = true;
+                        zombie.vx = this.car.vx * 0.5;
+                        zombie.vy = -5;
+                        this.cash += 10;
+                        this.addParticle(zombie.x, zombie.y, 'blood');
+                        
+                        // Screen shake
+                        this.camera.x += (Math.random() - 0.5) * 10;
+                    } else if(dist < 40 && speed <= 2) {
+                        this.car.vx *= 0.9;
+                        this.car.health -= 0.5;
+                    }
+                    
+                    // Weapon auto-attack
+                    if(this.upgrades.weapon > 0 && dist < 150 + this.upgrades.weapon * 50) {
+                        if(Math.random() < 0.1 * this.upgrades.weapon) {
+                            zombie.health -= 1;
+                            if(zombie.health <= 0 && !zombie.dead) {
+                                zombie.dead = true;
+                                this.cash += 10;
+                                this.addParticle(zombie.x, zombie.y, 'blood');
+                            }
+                        }
+                    }
+                });
+                
+                // Update obstacles
+                this.obstacles.forEach(obs => {
+                    const dx = this.car.x - obs.x;
+                    const dy = this.car.y - obs.y;
+                    
+                    if(Math.abs(dx) < obs.w/2 + 30 && Math.abs(dy) < obs.h/2 + 30) {
+                        if(obs.type === 'box') {
+                            this.car.vx *= 0.7;
+                            obs.x += this.car.vx * 0.5;
+                        } else if(obs.type === 'ramp') {
+                            this.car.vy = -10;
+                            this.car.vx += 2;
+                        } else if(obs.type === 'mine') {
+                            this.car.vy = -15;
+                            this.car.health -= 20;
+                            obs.hit = true;
+                            this.addParticle(obs.x, obs.y, 'explosion');
+                        }
+                    }
+                });
+                
+                // Update particles
+                this.particles = this.particles.filter(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2;
+                    p.life--;
+                    return p.life > 0;
+                });
+                
+                // Check fuel
+                if(this.car.fuel <= 0 && Math.abs(this.car.vx) < 0.1) {
+                    this.gameOver();
+                }
+                
+                // Check health
+                if(this.car.health <= 0) {
+                    this.gameOver();
+                }
+                
+                this.updateUI();
+            }
+            
+            addParticle(x, y, type) {
+                for(let i = 0; i < 5; i++) {
+                    this.particles.push({
+                        x: x + (Math.random() - 0.5) * 20,
+                        y: y + (Math.random() - 0.5) * 20,
+                        vx: (Math.random() - 0.5) * 5,
+                        vy: (Math.random() - 0.5) * 5,
+                        life: 30 + Math.random() * 20,
+                        type: type,
+                        color: type === 'blood' ? '#8B0000' : type === 'smoke' ? '#666' : '#FF6600'
+                    });
+                }
+            }
+            
+            draw() {
+                // Clear
+                this.ctx.fillStyle = '#87CEEB';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.ctx.save();
+                this.ctx.translate(-this.camera.x, -this.camera.y);
+                
+                // Draw ground
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.camera.x, this.canvas.height + this.camera.y);
+                for(let i = 0; i < this.ground.length - 1; i++) {
+                    this.ctx.lineTo(this.ground[i].x, this.ground[i].y);
+                }
+                this.ctx.lineTo(this.camera.x + this.canvas.width, this.canvas.height + this.camera.y);
+                this.ctx.closePath();
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#654321';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                
+                // Draw grass
+                this.ctx.fillStyle = '#228B22';
+                this.ctx.beginPath();
+                for(let i = 0; i < this.ground.length - 1; i++) {
+                    this.ctx.lineTo(this.ground[i].x, this.ground[i].y);
+                }
+                for(let i = this.ground.length - 1; i >= 0; i--) {
+                    this.ctx.lineTo(this.ground[i].x, this.ground[i].y - 10);
+                }
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // Draw obstacles
+                this.obstacles.forEach(obs => {
+                    if(obs.type === 'box') {
+                        this.ctx.fillStyle = '#8B4513';
+                        this.ctx.fillRect(obs.x - obs.w/2, obs.y - obs.h, obs.w, obs.h);
+                    } else if(obs.type === 'ramp') {
+                        this.ctx.save();
+                        this.ctx.translate(obs.x, obs.y);
+                        this.ctx.rotate(obs.angle);
+                        this.ctx.fillStyle = '#A0522D';
+                        this.ctx.fillRect(-obs.w/2, -obs.h, obs.w, obs.h);
+                        this.ctx.restore();
+                    } else if(obs.type === 'mine' && !obs.hit) {
+                        this.ctx.fillStyle = '#333';
+                        this.ctx.beginPath();
+                        this.ctx.arc(obs.x, obs.y - 10, 15, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.fillStyle = '#FF0000';
+                        this.ctx.beginPath();
+                        this.ctx.arc(obs.x, obs.y - 10, 5, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                });
+                
+                // Draw zombies
+                this.zombies.forEach(zombie => {
+                    if(zombie.dead) {
+                        this.ctx.save();
+                        this.ctx.translate(zombie.x, zombie.y);
+                        this.ctx.rotate(Math.PI / 2);
+                        this.drawZombie(0, 0);
+                        this.ctx.restore();
+                    } else {
+                        this.drawZombie(zombie.x, zombie.y);
+                    }
+                });
+                
+                // Draw car
+                this.drawCar();
+                
+                // Draw particles
+                this.particles.forEach(p => {
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life / 50;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.type === 'explosion' ? 10 : 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                this.ctx.globalAlpha = 1;
+                
+                this.ctx.restore();
+            }
+            
+            drawZombie(x, y) {
+                this.ctx.fillStyle = '#2E8B57';
+                // Body
+                this.ctx.fillRect(x - 10, y - 40, 20, 40);
+                // Head
+                this.ctx.fillStyle = '#90EE90';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y - 50, 12, 0, Math.PI * 2);
+                this.ctx.fill();
+                // Eyes
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.fillRect(x - 5, y - 55, 3, 3);
+                this.ctx.fillRect(x + 2, y - 55, 3, 3);
+                // Arms
+                this.ctx.fillStyle = '#2E8B57';
+                this.ctx.fillRect(x - 15, y - 35, 5, 20);
+                this.ctx.fillRect(x + 10, y - 35, 5, 20);
+            }
+            
+            drawCar() {
+                this.ctx.save();
+                this.ctx.translate(this.car.x, this.car.y);
+                this.ctx.rotate(this.car.angle);
+                
+                // Shadow
+                this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                this.ctx.fillRect(-35, -15, 70, 30);
+                
+                // Body
+                this.ctx.fillStyle = '#FF6B35';
+                this.ctx.fillRect(-30, -20, 60, 40);
+                
+                // Armor
+                if(this.upgrades.armor > 1) {
+                    this.ctx.strokeStyle = '#666';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.strokeRect(-32, -22, 64, 44);
+                }
+                if(this.upgrades.armor > 3) {
+                    this.ctx.fillStyle = 'rgba(100,100,100,0.5)';
+                    this.ctx.fillRect(-30, -20, 20, 40);
+                }
+                
+                // Weapon
+                if(this.upgrades.weapon > 0) {
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(10, -25, 30, 10);
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(40, -20, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+                
+                // Wheels
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(-25, -25, 15, 10);
+                this.ctx.fillRect(-25, 15, 15, 10);
+                this.ctx.fillRect(10, -25, 15, 10);
+                this.ctx.fillRect(10, 15, 15, 10);
+                
+                // Windows
+                this.ctx.fillStyle = '#87CEEB';
+                this.ctx.fillRect(-10, -15, 20, 30);
+                
+                // Driver
+                this.ctx.fillStyle = '#FFE4B5';
+                this.ctx.beginPath();
+                this.ctx.arc(0, -5, 8, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.restore();
+            }
+            
+            updateUI() {
+                document.getElementById('distance').textContent = this.distance;
+                document.getElementById('speed').textContent = Math.floor(Math.abs(this.car.vx) * 5);
+                document.getElementById('cash').textContent = this.cash;
+                document.getElementById('fuelFill').style.width = (this.car.fuel / this.car.maxFuel * 100) + '%';
+                
+                // Update markers
+                document.querySelectorAll('.marker').forEach(marker => {
+                    const dist = parseInt(marker.dataset.dist);
+                    if(this.distance >= dist) {
+                        marker.classList.add('reached');
+                    }
+                });
+            }
+            
+            gameOver() {
+                this.totalCash += this.cash;
+                document.getElementById('finalDistance').textContent = this.distance;
+                document.getElementById('finalCash').textContent = this.cash;
+                document.getElementById('gameOver').classList.remove('hidden');
+            }
+            
+            openShop() {
+                document.getElementById('gameOver').classList.add('hidden');
+                document.getElementById('shop').classList.remove('hidden');
+                this.updateShop();
+            }
+            
+            updateShop() {
+                document.getElementById('shopMoney').textContent = this.totalCash;
+                
+                // Update upgrade displays
+                const upgrades = ['engine', 'transmission', 'wheels', 'fuel', 'armor', 'weapon'];
+                upgrades.forEach(up => {
+                    const level = this.upgrades[up];
+                    const maxLevel = up === 'weapon' ? 3 : 5;
+                    const cost = this.costs[up];
+                    
+                    document.getElementById(up + 'Level').textContent = level;
+                    document.getElementById(up + 'Cost').textContent = '$' + cost;
+                    
+                    const item = document.getElementById(up + 'Cost').parentElement;
+                    if(level >= maxLevel) {
+                        item.classList.add('maxed');
+                        document.getElementById(up + 'Cost').textContent = 'МАКС';
+                    } else {
+                        item.classList.remove('maxed');
+                    }
+                });
+            }
+            
+            buyUpgrade(type) {
+                const level = this.upgrades[type];
+                const maxLevel = type === 'weapon' ? 3 : 5;
+                
+                if(level >= maxLevel) return;
+                
+                const cost = this.costs[type];
+                if(this.totalCash >= cost) {
+                    this.totalCash -= cost;
+                    this.upgrades[type]++;
+                    this.costs[type] = Math.floor(cost * 1.5);
+                    
+                    // Apply upgrade
+                    if(type === 'fuel') {
+                        this.car.maxFuel = 100 + (this.upgrades.fuel - 1) * 25;
+                    }
+                    
+                    this.updateShop();
+                }
+            }
+            
+            nextLevel() {
+                this.level++;
+                this.cash = 0;
+                document.getElementById('shop').classList.add('hidden');
+                this.resetLevel();
+            }
+            
+            loop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+        
+        const game = new Game();
+    </script>
+</body>
+</html>
